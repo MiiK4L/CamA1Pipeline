@@ -100,6 +100,12 @@ jobs:
           cd octopi-build/src
           sudo bash -x ./build_dist
             
+      - name: Compress Image to ZIP
+        run: |
+          cd octopi-build/src/workspace
+          img_file=$(ls *.img | head -1)
+          zip -r "${img_file%.img}.zip" "${img_file}"
+
       - name: Calculate Checksums
         id: checksum
         run: |
