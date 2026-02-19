@@ -1,0 +1,6 @@
+{
+  "printer_ip": "192.168.1.X",
+  "access_code": "YOUR_ACCESS_CODE",
+  "serial_number": "YOUR_SERIAL_NUMBER",
+  "mqtt_port": 8883
+}

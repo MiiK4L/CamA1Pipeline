@@ -1,0 +1,111 @@
+name: Build Custom OctoPi Image
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+jobs:
+  test-configs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate JSON configurations
+        run: |
+          jq empty src/config/bambu.json
+          jq empty rpi-imager.json
+          
+  build:
+    needs: test-configs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup QEMU for ARM emulation
+        uses: docker/setup-qemu-action@v3
+        
+      - name: Clone CustomPiOS and guysoft/OctoPi
+        run: |
+          git clone --depth 1 https://github.com/guysoft/CustomPiOS.git
+          git clone --depth 1 https://github.com/guysoft/OctoPi.git octopi-build
+          
+      - name: Inject Custom Configurations
+        env:
+          OCTOEVERYWHERE_API_KEY: ${{ secrets.OCTOEVERYWHERE_API_KEY }}
+        run: |
+          # Setup directories inside CustomPiOS OctoPi module filesystem
+          export OCTOPI_FS="octopi-build/src/modules/octopi/filesystem/root"
+          mkdir -p $OCTOPI_FS/etc/motioneye
+          mkdir -p $OCTOPI_FS/etc/octoprint
+          mkdir -p $OCTOPI_FS/home/pi/bambu
+          mkdir -p $OCTOPI_FS/boot
+          
+          # Copy source configurations
+          cp src/config/motion.conf $OCTOPI_FS/etc/motioneye/motion.conf
+          cp src/config/octoprint.cfg $OCTOPI_FS/etc/octoprint/config.yaml
+          cp src/config/bambu.json $OCTOPI_FS/home/pi/bambu/bambu.json
+          cp src/config/wpa_supplicant.conf.template $OCTOPI_FS/boot/octopi-wpa-supplicant.txt
+          
+          # Script to execute during chroot phase to install plugins and adjust settings
+          mkdir -p $OCTOPI_FS/etc/custom_setup/
+          cat << 'EOF' > $OCTOPI_FS/etc/custom_setup/post_install.sh
+          #!/bin/bash
+          echo "Starting Custom Script..."
+          # Install OctoEverywhere & Bambu plugins
+          sudo -u pi /home/pi/oprint/bin/pip install --no-cache-dir octoeverywhere octoprint-bambu-printer
+          
+          # Inject API Key for auto-config if present
+          if [ -n "$OCTOEVERYWHERE_API_KEY" ]; then
+             echo "export OCTOEVERYWHERE_API_KEY=$OCTOEVERYWHERE_API_KEY" >> /etc/default/octoprint
+          fi
+          
+          # Set Governor to performance for minimal lag on video & interface
+          echo 'GOVERNOR="performance"' > /etc/default/cpufrequtils
+          
+          # Fix permissions for Bambu configs
+          chown -R pi:pi /home/pi/bambu
+          EOF
+          chmod +x $OCTOPI_FS/etc/custom_setup/post_install.sh
+          
+          # Add our script execution to module build script
+          echo "/etc/custom_setup/post_install.sh" >> octopi-build/src/modules/octopi/build_script
+          
+      - name: Build Image with Docker
+        run: |
+          cd octopi-build/src
+          docker run --rm --privileged \
+            -v $(pwd):/workspace \
+            -v /dev:/dev \
+            guysoft/custompios:latest \
+            /bin/bash -c "cd /workspace && ./build_all"
+            
+      - name: Calculate Checksums
+        id: checksum
+        run: |
+          zip_file=$(ls octopi-build/src/workspace/*.zip | head -1)
+          sha256=$(sha256sum ${zip_file} | awk '{print $1}')
+          echo "sha256=${sha256}" >> $GITHUB_OUTPUT
+          echo "zip_file=${zip_file}" >> $GITHUB_OUTPUT
+          
+      - name: Update rpi-imager.json
+        run: |
+          sed -i "s/TO_BE_REPLACED_BY_GITHUB_ACTIONS/${{ steps.checksum.outputs.sha256 }}/g" rpi-imager.json
+          zip_basename=$(basename ${{ steps.checksum.outputs.zip_file }})
+          sed -i "s/TO_BE_REPLACED_FILENAME/${zip_basename}/g" rpi-imager.json
+
+      - name: Release outputs
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ steps.checksum.outputs.zip_file }}
+            rpi-imager.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

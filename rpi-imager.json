@@ -1,0 +1,16 @@
+{
+    "os_list": [
+        {
+            "name": "OctoPi A1 Custom (Pi3B+/Zero2W)",
+            "description": "OctoPrint with OctoEverywhere, Logitech C270 720p30, and Bambu A1 monitoring",
+            "icon": "https://octoprint.org/assets/img/logo.png",
+            "url": "https://github.com/YOUR_GITHUB_USER/YOUR_REPO_NAME/releases/latest/download/TO_BE_REPLACED_FILENAME",
+            "extract_size": 4000000000,
+            "extract_sha256": "TO_BE_REPLACED_BY_GITHUB_ACTIONS",
+            "image_download_size": 1000000000,
+            "image_download_sha256": "TO_BE_REPLACED_BY_GITHUB_ACTIONS",
+            "release_date": "2024-05-01",
+            "website": "https://github.com/YOUR_GITHUB_USER/YOUR_REPO_NAME"
+        }
+    ]
+}

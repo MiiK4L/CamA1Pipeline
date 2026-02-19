@@ -1,0 +1,14 @@
+version: '3'
+services:
+  motioneye:
+    image: ccrisan/motioneye:master-armhf
+    container_name: motioneye
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./src/config/motion.conf:/etc/motioneye/motion.conf
+      - /var/lib/motioneye:/var/lib/motioneye
+    ports:
+      - "8765:8765"
+    devices:
+      - /dev/video0:/dev/video0
