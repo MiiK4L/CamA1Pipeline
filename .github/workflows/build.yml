@@ -84,7 +84,7 @@ jobs:
           docker run --rm --privileged \
             -v $(pwd):/workspace \
             -v /dev:/dev \
-            guysoft/custompios:latest \
+            guysoft/custompios:devel \
             /bin/bash -c "cd /workspace && ./build_all"
             
       - name: Calculate Checksums
