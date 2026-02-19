@@ -83,6 +83,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y coreutils p7zip-full qemu-user-static python3-git curl wget zip unzip
 
+      - name: Download Raspbian Base Image
+        run: |
+          mkdir -p octopi-build/src/image
+          cd octopi-build/src/image
+          wget -c --trust-server-names 'https://downloads.raspberrypi.org/raspios_lite_armhf_latest'
+
       - name: Update CustomPiOS Paths
         run: |
           cd octopi-build/src
