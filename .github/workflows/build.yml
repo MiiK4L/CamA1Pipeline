@@ -104,7 +104,7 @@ jobs:
         run: |
           cd octopi-build/src/workspace
           img_file=$(ls *.img | head -1)
-          zip -r "${img_file%.img}.zip" "${img_file}"
+          sudo zip -r "${img_file%.img}.zip" "${img_file}"
 
       - name: Calculate Checksums
         id: checksum
