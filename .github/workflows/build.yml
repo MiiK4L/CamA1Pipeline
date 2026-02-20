@@ -120,9 +120,19 @@ jobs:
           zip_basename=$(basename ${{ steps.checksum.outputs.zip_file }})
           sed -i "s/TO_BE_REPLACED_FILENAME/${zip_basename}/g" rpi-imager.json
 
+      - name: Create Git Tag
+        id: tag
+        run: |
+          DATE_TAG="build-$(date +%Y%m%d-%H%M)"
+          git tag $DATE_TAG
+          git push origin $DATE_TAG
+          echo "date_tag=$DATE_TAG" >> $GITHUB_OUTPUT
+
       - name: Release outputs
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.tag.outputs.date_tag }}
+          name: "OctoPi Custom ${{ steps.tag.outputs.date_tag }}"
           files: |
             ${{ steps.checksum.outputs.zip_file }}
             rpi-imager.json
