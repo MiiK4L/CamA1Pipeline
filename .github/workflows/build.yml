@@ -40,6 +40,7 @@ jobs:
       - name: Inject Custom Configurations
         env:
           OCTOEVERYWHERE_API_KEY: ${{ secrets.OCTOEVERYWHERE_API_KEY }}
+          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
         run: |
           # Setup directories inside CustomPiOS OctoPi module filesystem
           export OCTOPI_FS="octopi-build/src/modules/octopi/filesystem/root"
@@ -56,23 +57,58 @@ jobs:
           
           # Script to execute during chroot phase to install plugins and adjust settings
           mkdir -p $OCTOPI_FS/etc/custom_setup/
-          cat << 'EOF' > $OCTOPI_FS/etc/custom_setup/post_install.sh
+          cat << 'SCRIPT_EOF' > $OCTOPI_FS/etc/custom_setup/post_install.sh
           #!/bin/bash
-          echo "Starting Custom Script..."
+          set -e
+          echo "=== Starting Custom OctoPi Script ==="
+
           # Install OctoEverywhere & Bambu plugins
           sudo -u pi /home/pi/oprint/bin/pip install --no-cache-dir octoeverywhere octoprint-bambu-printer
-          
-          # Inject API Key for auto-config if present
+
+          # Inject OctoEverywhere API Key if provided
           if [ -n "$OCTOEVERYWHERE_API_KEY" ]; then
-             echo "export OCTOEVERYWHERE_API_KEY=$OCTOEVERYWHERE_API_KEY" >> /etc/default/octoprint
+            echo "export OCTOEVERYWHERE_API_KEY=$OCTOEVERYWHERE_API_KEY" >> /etc/default/octoprint
           fi
-          
-          # Set Governor to performance for minimal lag on video & interface
+
+          # Set CPU Governor to performance (low latency for video & interface)
           echo 'GOVERNOR="performance"' > /etc/default/cpufrequtils
-          
+
           # Fix permissions for Bambu configs
           chown -R pi:pi /home/pi/bambu
-          EOF
+
+          # ── Tailscale ──────────────────────────────────────────────────
+          curl -fsSL https://tailscale.com/install.sh | sh
+
+          # Store auth key securely (deleted by the service after first use)
+          if [ -n "$TAILSCALE_AUTH_KEY" ]; then
+            echo "TAILSCALE_AUTH_KEY=$TAILSCALE_AUTH_KEY" > /etc/tailscale-authkey
+            chmod 600 /etc/tailscale-authkey
+          fi
+
+          # Systemd one-shot service: connects at first boot then removes the key
+          cat << 'UNIT' > /etc/systemd/system/tailscale-autoconnect.service
+          [Unit]
+          Description=Tailscale auto-connect at first boot
+          After=tailscaled.service network-online.target
+          Wants=network-online.target
+          ConditionPathExists=/etc/tailscale-authkey
+
+          [Service]
+          Type=oneshot
+          EnvironmentFile=/etc/tailscale-authkey
+          ExecStart=/usr/bin/tailscale up --authkey=${TAILSCALE_AUTH_KEY} --hostname=octopi-a1 --accept-routes
+          ExecStartPost=/bin/rm -f /etc/tailscale-authkey
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
+          systemctl enable tailscale-autoconnect.service tailscaled.service
+          # ───────────────────────────────────────────────────────────────
+
+          echo "=== Custom Script Done ==="
+          SCRIPT_EOF
           chmod +x $OCTOPI_FS/etc/custom_setup/post_install.sh
           
           # Add our script execution to module build script
