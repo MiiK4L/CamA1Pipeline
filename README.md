@@ -192,6 +192,16 @@ Attends ~2 minutes, puis accède à OctoPrint :
 | **Tailscale** *(si configuré)* | `http://octopi-a1` depuis n'importe où |
 | **IP directe** | `http://192.168.1.XXX` (voir ton routeur) |
 
+**Accès SSH :**
+
+```bash
+ssh pi@octopi.local
+# Mot de passe par défaut : raspberry
+```
+
+> ⚠️ Change le mot de passe dès ta première connexion : `passwd`
+> Si `octopi.local` ne répond pas, utilise l'IP directe : `ssh pi@192.168.1.XXX`
+
 ---
 
 ## 📱 Étape 7 — Configurer OctoApp (iPhone)
