@@ -1,50 +1,232 @@
-# 📸 OctoPi Bambu A1 Pipeline (Pi 3B+ / Zero 2 W)
+# 🖨️ OctoPi Custom — Bambu A1 + C270 + Tailscale
 
-Ce projet fournit une infrastructure CI/CD complète avec GitHub Actions pour générer automatiquement une image **OctoPi Custom**. 
-Elle est optimisée pour Raspberry Pi 3 B+ et Zero 2 W avec une caméra **Logitech C270**, **OctoEverywhere**, et l'intégration **Bambu Lab A1**.
+Pipeline CI/CD GitHub Actions générant automatiquement une image **OctoPi personnalisée** pour **Raspberry Pi 3 B+** et **Zero 2 W**, prête à monitorer une **Bambu Lab A1** avec une **Logitech C270** en 720p 30fps.
 
-## 🛠 Fonctionnalités
-- Image générée automatiquement à chaque push via **CustomPiOS** (Fork guysoft).
-- Webcam Logitech C270 configurée en **720p à 30fps**.
-- **OctoEverywhere** intégré pour l'accès externe.
-- **Bambu Connect** prêt à être utilisé pour la Bambu Lab A1.
-- Optimisation système avec gouverneur processeur réglé sur `performance`.
-- **MotionEye** en option via Docker pour la surveillance ou l'enregistrement avancé.
+---
 
-## 🚀 Installation & Flash
+## 📦 Ce que contient l'image
 
-1. **Téléchargez la dernière Release**
-   Une image au format `.zip` est automatiquement construite dans l'onglet **Releases** de ce repository GitHub par notre GitHub Actions CI/CD en forkant l'architecture guysoft/OctoPi.
-   Vous pouvez aussi inclure le fichier `rpi-imager.json` directement dans **Raspberry Pi Imager** (Option "Utiliser une image personnalisée OS").
+| Composant | Détail |
+|-----------|--------|
+| **OctoPrint** | Dernière version stable |
+| **Plugin OctoEverywhere** | Accès à distance + app iPhone OctoApp |
+| **Plugin Bambu Printer** | Monitoring Bambu Lab A1 via MQTT |
+| **Webcam Logitech C270** | Configurée en 1280×720 @ 30fps |
+| **Tailscale** | VPN mesh (connexion automatique au premier boot) *(optionnel)* |
+| **MotionEye** | Surveillance / enregistrement via Docker *(optionnel)* |
+| **Gouverneur CPU** | Réglé en `performance` pour fluidité max |
 
-2. **Édition du WiFi**
-   Avant de retirer la carte SD de l'ordinateur, ouvrez la partition `boot` et modifiez le fichier `octopi-wpa-supplicant.txt` avec les identifiants de votre réseau en vous basant sur le modèle `src/config/wpa_supplicant.conf.template`.
+---
 
-3. **Clé API Bambu & OctoEverywhere**
-   À la racine de la carte SD (ou via SSH dans `/home/pi/bambu/`), renseignez le fichier `bambu.json` (voir `src/config/bambu.json`) avec le code d'accès de l'imprimante A1 (situé dans l'écran de l'imprimante). 
-   Pour OctoEverywhere, complétez le setup via l'interface web pour le lier à votre compte (L'API key sera automatiquement configuré si injectée via secret Github).
+## 🚀 Étape 1 — Forker ce repo et configurer les secrets GitHub
 
-## 📱 Utilisation avec OctoApp (iPhone)
-Une fois OctoPrint démarré :
-1. Téléchargez **OctoApp** sur l'App Store de votre iPhone.
-2. Ajoutez votre imprimante grâce au QR Code OctoEverywhere.
-3. Le flux 720p 30 FPS de la C270 sera disponible avec une fluidité impressionnante sans configurations supplémentaires grâce au `motion.conf` optimisé intégré automatiquement lors du process CI/CD !
+### 1.1 Forker le repo
 
-## 🖨 Modèles 3D Recommandés pour Mount Bambu A1
-Pour fixer correctement votre Logitech C270 à la Bambu A1 sans vibrations :
-- [Bambu Lab A1 mini / A1 Logitech C270 Mount (MakerWorld)](https://makerworld.com/en/models/112690)
-- [C270 Simple Clip-on Mount (Printables)](https://www.printables.com/model/685957-bambu-a1-mini-c270-camera-mount)
+Clique sur **Fork** en haut à droite de la page GitHub pour copier ce repo sur ton compte.
 
-## 🐳 MotionEye Backup (Optionnel)
-Si vous souhaitez bénéficier de MotionEye pour un système de rétention plus complexe :
+### 1.2 Configurer les secrets GitHub Actions
+
+Va dans **Settings → Secrets and variables → Actions → New repository secret** de ton fork.
+
+#### 🔑 `GITHUB_TOKEN` (automatique)
+> Déjà disponible, rien à faire.
+
+---
+
+#### 🌐 `TAILSCALE_AUTH_KEY` *(optionnel — pour accès VPN au Pi)*
+
+> **Si tu veux te connecter à l'OctoPi depuis partout sans ouvrir de port :**
+
+1. Va sur [https://login.tailscale.com/admin/settings/keys](https://login.tailscale.com/admin/settings/keys)
+2. Clique **Generate auth key**
+3. Options recommandées :
+   - ✅ **Reusable** *(si tu veux re-flasher sans recréer de clé)*
+   - ✅ **Ephemeral** *(le Pi disparaît de ta liste s'il est hors ligne longtemps)*
+4. Copie la clé (`tskey-auth-xxxx...`)
+5. Ajoute le secret GitHub : `TAILSCALE_AUTH_KEY` = `tskey-auth-xxxx...`
+
+> **Si tu ne veux PAS Tailscale :** laisse ce secret vide ou ne le crée pas. Le Pi sera uniquement accessible en local sur ton réseau Wi-Fi.
+
+---
+
+#### 🔵 `OCTOEVERYWHERE_API_KEY` *(optionnel — pour liaison auto au compte OctoEverywhere)*
+
+> **Uniquement nécessaire si tu veux que chaque nouvelle image soit automatiquement liée à ton compte OctoEverywhere.**
+
+- Si tu ne le mets pas, la liaison se fait manuellement via l'interface OctoPrint au premier boot (une popup apparaît automatiquement).
+- Récupère ta clé sur [https://octoeverywhere.com/appportal/v1/](https://octoeverywhere.com)
+
+> **Recommandation :** laisse ce secret vide pour la première installation. La liaison manuelle prend 30 secondes.
+
+---
+
+## ⚙️ Étape 2 — Lancer le build
+
+Le build se lance **automatiquement à chaque push** sur la branche `main`.
+
+Pour le déclencher manuellement :
+- Va dans **Actions → Build Custom OctoPi Image → Run workflow**
+
+> ⏱️ **Temps de build estimé : 1h30 – 2h** (compilation ARM native via QEMU sur serveurs GitHub).
+
+Quand le build est terminé, l'image apparaît dans l'onglet **Releases** de ton repo.
+
+---
+
+## 💾 Étape 3 — Flasher la carte SD
+
+### Option A — Raspberry Pi Imager (recommandé)
+
+1. Télécharge [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+2. Clique **Choisir l'OS → Utiliser une image personnalisée**
+3. Télécharge le `.zip` depuis l'onglet **Releases** de ton repo GitHub
+
+### Option B — Via `rpi-imager.json` (futur)
+
+Une fois que le build a tournée au moins une fois, le fichier `rpi-imager.json` contiendra l'URL et le hash SHA256 de la dernière image. Tu pourras le charger directement dans **Raspberry Pi Imager → Choisir l'OS → Charger une liste personnalisée**.
+
+---
+
+## 📡 Étape 4 — Configurer le Wi-Fi (obligatoire)
+
+Après le flash, **avant de retirer la carte SD**, ouvre la partition `bootfs` et édite le fichier :
+
+```
+octopi-wpa-supplicant.txt
+```
+
+Modifie les lignes suivantes :
+
+```ini
+network={
+    ssid="TON_RÉSEAU_WIFI"
+    psk="TON_MOT_DE_PASSE"
+}
+```
+
+> ⚠️ Le Pi **ne démarrera pas sur le réseau** sans cette étape.
+
+---
+
+## 🖨️ Étape 5 — Configurer la Bambu Lab A1
+
+### Trouver les infos de connexion de l'A1
+
+Sur l'imprimante elle-même :
+1. **Écran → Paramètres → Réseau**
+2. Note l'**adresse IP** de l'imprimante (ex: `192.168.1.42`)
+3. **Écran → Paramètres → Compte → Code d'accès**
+4. Note le **code d'accès** (8 chiffres)
+5. **Écran → Paramètres → À propos → Numéro de série**
+6. Note le **numéro de série** (format `X1Cxxxxxxxx`)
+
+### Compléter `bambu.json`
+
+Deux options :
+
+**Option A — Avant de flasher :** modifie `src/config/bambu.json` dans ton repo :
+```json
+{
+  "printer_ip": "192.168.1.42",
+  "access_code": "12345678",
+  "serial_number": "X1Cxxxxxxxxx",
+  "mqtt_port": 8883
+}
+```
+Puis commit + push → relance un build → reflash.
+
+**Option B — Après le boot (recommandé)** : connecte-toi via SSH ou via l'interface OctoPrint :
+- **OctoPrint → Paramètres → Bambu Printer → Configurer**
+- Renseigne IP, code d'accès et numéro de série directement.
+
+---
+
+## 🔌 Étape 6 — Premier démarrage
+
+1. Insère la carte SD dans le Raspberry Pi
+2. Branche la **Logitech C270** sur un port USB
+3. Alimente le Pi
+
+Attends ~2 minutes, puis accède à OctoPrint :
+
+| Méthode | URL |
+|---------|-----|
+| **Réseau local** | `http://octopi.local` |
+| **Tailscale** *(si configuré)* | `http://octopi-a1` depuis n'importe où |
+| **IP directe** | `http://192.168.1.XXX` (voir ton routeur) |
+
+---
+
+## 📱 Étape 7 — Configurer OctoApp (iPhone)
+
+1. Télécharge **OctoApp** sur l'App Store
+2. Ouvre OctoPrint dans Safari → tu verras une popup OctoEverywhere
+3. Clique **Lier mon compte** et connecte-toi à OctoEverywhere
+4. OctoApp détectera automatiquement ton imprimante
+5. Le flux 720p 30fps de la C270 sera disponible immédiatement 📷
+
+---
+
+## 🔒 Étape 8 — Vérifier Tailscale *(si configuré)*
+
+Au premier boot, le service `tailscale-autoconnect` :
+1. Attend que le Wi-Fi soit actif
+2. Exécute `tailscale up --authkey=... --hostname=octopi-a1`
+3. **Supprime la clé d'auth du disque** (sécurité)
+4. Le Pi apparaît dans ton compte Tailscale sous le nom `octopi-a1`
+
+Vérifie sur [https://login.tailscale.com/admin/machines](https://login.tailscale.com/admin/machines) que `octopi-a1` est bien connecté (point vert).
+
+> Si le Pi n'apparaît pas après 5 minutes : SSH en local (`ssh pi@octopi.local`) et lance `sudo tailscale status`.
+
+---
+
+## 🐳 MotionEye (optionnel — enregistrement vidéo)
+
+MotionEye permet de conserver les vidéos de tes impressions sur le Pi.
+
 ```bash
+# Sur le Pi via SSH
 docker-compose up -d
 ```
 
-## ⚙️ Structure du Repository
-- `.github/workflows/build.yml` : Workflow CustomPiOS / Action Docker logic
-- `src/config/` : Payload configurations poussées dans l'image
-- `docker-compose.yml` : Options standalone
-- `rpi-imager.json` : Snippet format Imager
+Interface accessible sur : `http://octopi.local:8765`
 
-Amusez-vous bien ! 👾
+---
+
+## 🖨️ Supports 3D pour la C270 sur Bambu A1
+
+| Modèle | Lien |
+|--------|------|
+| Bambu A1 / A1 mini — C270 Mount | [MakerWorld](https://makerworld.com/en/models/112690) |
+| C270 Clip-on Mount universel | [Printables](https://www.printables.com/model/685957-bambu-a1-mini-c270-camera-mount) |
+
+---
+
+## 🗂️ Structure du repo
+
+```
+.
+├── .github/workflows/build.yml   # Pipeline CI/CD principal
+├── src/config/
+│   ├── bambu.json                # Template connexion Bambu A1
+│   ├── motion.conf               # Config webcam C270 (720p 30fps)
+│   ├── octoprint.cfg             # Plugins OctoPrint
+│   └── wpa_supplicant.conf.template  # Template Wi-Fi
+├── docker-compose.yml            # MotionEye (optionnel)
+├── rpi-imager.json               # Snippet Raspberry Pi Imager
+└── README.md
+```
+
+---
+
+## ❓ Récapitulatif des features optionnelles
+
+| Feature | Requis ? | Configuration |
+|---------|----------|---------------|
+| Tailscale | ❌ Optionnel | Secret GitHub `TAILSCALE_AUTH_KEY` |
+| OctoEverywhere auto-link | ❌ Optionnel | Secret GitHub `OCTOEVERYWHERE_API_KEY` |
+| Bambu A1 IP/Code d'accès | ✅ Pour monitoring | `src/config/bambu.json` ou via UI OctoPrint |
+| Wi-Fi | ✅ Obligatoire | `octopi-wpa-supplicant.txt` sur la carte SD |
+| Logitech C270 | ✅ Pour webcam | Brancher sur USB avant le boot |
+| MotionEye | ❌ Optionnel | `docker-compose up -d` sur le Pi |
