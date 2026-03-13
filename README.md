@@ -145,6 +145,18 @@ touch /Volumes/bootfs/ssh
 
 ---
 
+### Troubleshooting
+
+1. **Camera Feed is Black / "No Signal"**
+   - If using a **Raspberry Pi 3B+** or **Zero 2 W** and the camera (especially Logitech C270) isn't streaming, check for power issues:
+     ```bash
+     sudo dmesg | grep -i voltage
+     ```
+   - If you see `Undervoltage detected!`, your power supply is dropping voltage under load. The Pi disables USB ports to protect itself.
+   - **Fix:** Use the Official Raspberry Pi Power Supply (5.1V / 2.5A minimum) or use an externally powered USB Hub for the camera.
+
+2. **Connecting from the Bambu Lab App**
+
 ## 🖨️ Étape 5 — Configurer la Bambu Lab A1
 
 ### Trouver les infos de connexion de l'A1
