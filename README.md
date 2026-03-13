@@ -89,22 +89,19 @@ Une fois que le build a tournée au moins une fois, le fichier `rpi-imager.json`
 
 ## 📡 Étape 4 — Configurer le Wi-Fi (obligatoire)
 
-Après le flash, **avant de retirer la carte SD**, ouvre la partition `bootfs` et édite le fichier :
+> ⚠️ Les nouvelles images OctoPi utilisent **NetworkManager** (Raspbian Trixie). Il n'y a plus de fichier `octopi-wpa-supplicant.txt`.
 
-```
-octopi-wpa-supplicant.txt
-```
+**Dans Raspberry Pi Imager, avant de cliquer sur "Écrire" :**
 
-Modifie les lignes suivantes :
+1. Appuie sur `CTRL+SHIFT+X` (ou clique sur l'icône ⚙️)
+2. Dans les **Options avancées**, configure :
+   - ✅ **Réseau Wi-Fi** → Ton SSID et mot de passe
+   - ✅ **Activer SSH** → Mot de passe ou clé publique
+   - ✅ **Nom d'hôte** → `octopi` (pour accès via `http://octopi.local`)
+   - ✅ **Utilisateur/mot de passe** → remplace `pi/raspberry` par défaut
+3. Valide, puis clique sur **Écrire**
 
-```ini
-network={
-    ssid="TON_RÉSEAU_WIFI"
-    psk="TON_MOT_DE_PASSE"
-}
-```
-
-> ⚠️ Le Pi **ne démarrera pas sur le réseau** sans cette étape.
+> ✅ Ces paramètres sont écrits sécurisement dans l'image au moment du flash, plus de fichier texte en clair sur la carte SD.
 
 ---
 
