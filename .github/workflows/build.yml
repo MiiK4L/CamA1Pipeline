@@ -107,6 +107,32 @@ jobs:
           systemctl enable tailscale-autoconnect.service tailscaled.service
           # ───────────────────────────────────────────────────────────────
 
+          # ── USTREAMER (Webcam USB Moderne) ─────────────────────────────
+          echo "Installing modern ustreamer..."
+          apt-get install -y ustreamer
+
+          # Disable legacy mjpg-streamer
+          systemctl disable webcamd || true
+
+          # Create ustreamer systemd service
+          cat << 'UNIT' > /etc/systemd/system/ustreamer.service
+          [Unit]
+          Description=uStreamer for Webcam
+          After=network.target
+
+          [Service]
+          User=pi
+          ExecStart=/usr/bin/ustreamer --device=/dev/video0 --host=0.0.0.0 --port=8080 --resolution=1280x720 --desired-fps=30 --format=YUYV --encoder=HW
+          Restart=always
+          RestartSec=3
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
+          systemctl enable ustreamer.service
+          # ───────────────────────────────────────────────────────────────
+
           echo "=== Custom Script Done ==="
           SCRIPT_EOF
           chmod +x $OCTOPI_FS/etc/custom_setup/post_install.sh
