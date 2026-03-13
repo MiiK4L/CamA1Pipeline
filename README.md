@@ -89,11 +89,38 @@ Une fois que le build a tournée au moins une fois, le fichier `rpi-imager.json`
 
 ## 📡 Étape 4 — Configurer le Wi-Fi (obligatoire)
 
-> ⚠️ La personnalisation de Raspberry Pi Imager est **grisée** pour les images custom — c'est normal. Configure le Wi-Fi manuellement après le flash.
+> ⚠️ La personnalisation de Raspberry Pi Imager est **grisée** pour les images custom — configure le Wi-Fi manuellement après le flash.
 
-**Après le flash**, la partition `bootfs` (FAT32) apparaît automatiquement sur ton bureau Mac/PC.
+**Après le flash**, la partition `bootfs` (FAT32) apparaît automatiquement sur ton bureau Mac.
 
-**1. Créer `wpa_supplicant.conf`** à la racine de `bootfs` :
+**Méthode 1 (Trixie/Bookworm) — modifier `wifi.nmconnection`** :
+
+Ouvre le fichier `bootfs/wifi.nmconnection` et modifie uniquement les deux lignes `ssid` et `psk` :
+
+```ini
+[connection]
+id=preconfigured
+type=wifi
+
+[wifi]
+mode=infrastructure
+ssid=TON_RÉSEAU_WIFI
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=TON_MOT_DE_PASSE
+
+[ipv4]
+method=auto
+
+[ipv6]
+addr-gen-mode=default
+method=auto
+```
+
+**Méthode 2 (fallback) — si `wifi.nmconnection` absent** :
+
+Crée un fichier `wpa_supplicant.conf` à la racine de `bootfs` :
 
 ```ini
 country=FR
@@ -107,14 +134,14 @@ network={
 }
 ```
 
-**2. Activer SSH** : crée un fichier vide nommé `ssh` (sans extension) à la racine de `bootfs` :
+**Activer SSH** dans tous les cas : crée un fichier vide `ssh` (sans extension) à la racine de `bootfs` :
 
 ```bash
 # Terminal Mac :
 touch /Volumes/bootfs/ssh
 ```
 
-**3. Éjecte la carte SD** et insère-la dans le Pi.
+**Éjecte la carte SD** puis insère-la dans le Pi.
 
 ---
 
