@@ -89,19 +89,32 @@ Une fois que le build a tournée au moins une fois, le fichier `rpi-imager.json`
 
 ## 📡 Étape 4 — Configurer le Wi-Fi (obligatoire)
 
-> ⚠️ Les nouvelles images OctoPi utilisent **NetworkManager** (Raspbian Trixie). Il n'y a plus de fichier `octopi-wpa-supplicant.txt`.
+> ⚠️ La personnalisation de Raspberry Pi Imager est **grisée** pour les images custom — c'est normal. Configure le Wi-Fi manuellement après le flash.
 
-**Dans Raspberry Pi Imager, avant de cliquer sur "Écrire" :**
+**Après le flash**, la partition `bootfs` (FAT32) apparaît automatiquement sur ton bureau Mac/PC.
 
-1. Appuie sur `CTRL+SHIFT+X` (ou clique sur l'icône ⚙️)
-2. Dans les **Options avancées**, configure :
-   - ✅ **Réseau Wi-Fi** → Ton SSID et mot de passe
-   - ✅ **Activer SSH** → Mot de passe ou clé publique
-   - ✅ **Nom d'hôte** → `octopi` (pour accès via `http://octopi.local`)
-   - ✅ **Utilisateur/mot de passe** → remplace `pi/raspberry` par défaut
-3. Valide, puis clique sur **Écrire**
+**1. Créer `wpa_supplicant.conf`** à la racine de `bootfs` :
 
-> ✅ Ces paramètres sont écrits sécurisement dans l'image au moment du flash, plus de fichier texte en clair sur la carte SD.
+```ini
+country=FR
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+
+network={
+    ssid="TON_RÉSEAU_WIFI"
+    psk="TON_MOT_DE_PASSE"
+    key_mgmt=WPA-PSK
+}
+```
+
+**2. Activer SSH** : crée un fichier vide nommé `ssh` (sans extension) à la racine de `bootfs` :
+
+```bash
+# Terminal Mac :
+touch /Volumes/bootfs/ssh
+```
+
+**3. Éjecte la carte SD** et insère-la dans le Pi.
 
 ---
 
